@@ -295,6 +295,15 @@ class model_perf(object):
         print('test  {}'.format(string))
         s.names.add(name)
 
+    def show_text(s):
+        print('  accuracy        F1             loss        time [ms]  name')
+        print('test  train   test  train   test     train')
+        for name in sorted(s.names):
+            print('{:5.2f} {:5.2f}   {:5.2f} {:5.2f}   {:.2e} {:.2e}   {:3.0f}   {}'.format(
+                    s.test_accuracy[name], s.train_accuracy[name],
+                    s.test_f1[name], s.train_f1[name],
+                    s.test_loss[name], s.train_loss[name], s.fit_time[name]*1000, name))
+
     def show(s, fontsize=None):
         if fontsize:
             plt.rc('pdf', fonttype=42)

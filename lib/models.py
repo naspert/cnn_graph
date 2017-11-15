@@ -161,7 +161,7 @@ class base_model(object):
             op_logits = self.inference(self.ph_data, self.ph_dropout)
             self.op_loss, self.op_loss_average = self.loss(op_logits, self.ph_labels, self.regularization)
             self.op_train = self.training(self.op_loss, self.learning_rate,
-                    self.decay_steps, self.decay_rate, self.momentum)
+                    self.decay_steps, self.decay_rate, self.momentum, self.use_gradient)
             self.op_prediction = self.prediction(op_logits)
 
             # Initialize variables, i.e. weights and biases.
@@ -227,7 +227,7 @@ class base_model(object):
                     loss_average = tf.identity(averages.average(loss), name='control')
             return loss, loss_average
     
-    def training(self, loss, learning_rate, decay_steps, decay_rate=0.95, momentum=0.9):
+    def training(self, loss, learning_rate, decay_steps, decay_rate=0.95, momentum=0.9, use_gradient=True):
         """Adds to the loss model the Ops required to generate and apply gradients."""
         with tf.name_scope('training'):
             # Learning rate.
@@ -237,11 +237,13 @@ class base_model(object):
                         learning_rate, global_step, decay_steps, decay_rate, staircase=True)
             tf.summary.scalar('learning_rate', learning_rate)
             # Optimizer.
-            if momentum == 0:
-                optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-                #optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+            if not use_gradient:
+                optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
             else:
-                optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+                if momentum == 0:
+                    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+                else:
+                    optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
             grads = optimizer.compute_gradients(loss)
             op_gradients = optimizer.apply_gradients(grads, global_step=global_step)
             # Histograms.
@@ -744,7 +746,7 @@ class cgcnn(base_model):
     def __init__(self, L, F, K, p, M, filter='chebyshev5', brelu='b1relu', pool='mpool1',
                 num_epochs=20, learning_rate=0.1, decay_rate=0.95, decay_steps=None, momentum=0.9,
                 regularization=0, dropout=0, batch_size=100, eval_frequency=200,
-                dir_name=''):
+                dir_name='', use_gradient=True):
         super().__init__()
         
         # Verify the consistency w.r.t. the number of layers.
@@ -793,6 +795,7 @@ class cgcnn(base_model):
         self.L, self.F, self.K, self.p, self.M = L, F, K, p, M
         self.num_epochs, self.learning_rate = num_epochs, learning_rate
         self.decay_rate, self.decay_steps, self.momentum = decay_rate, decay_steps, momentum
+        self.use_gradient = use_gradient
         self.regularization, self.dropout = regularization, dropout
         self.batch_size, self.eval_frequency = batch_size, eval_frequency
         self.dir_name = dir_name
